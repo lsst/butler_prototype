@@ -25,7 +25,6 @@ from lsst.daf.butler import (
     Dimension,
     LogicalColumnKey,
     LogicalColumnFactKey,
-    LogicalColumnTopologicalExtentKey,
     LogicalTable,
     NamedValueAbstractSet,
     SelectAdapter,
@@ -485,7 +484,7 @@ class ByDimensionsDatasetRecordStorage(DatasetRecordStorage):
             collection,
             static=self._static.dataset,
             dynamic=self._tags if collection.type is not CollectionType.CALIBRATION else self._calibs,
-            tsRepr=self._db.getTimespanRepresentation(),
+            TimespanReprClass=self._db.getTimespanRepresentation(),
             collectionKeyColumn=self._collections.getCollectionForeignKeyName(),
             runKeyColumn=self._collections.getRunForeignKeyName(),
         )
@@ -499,7 +498,7 @@ class _DatasetQueryLogicalTable(LogicalTable):
         collection: CollectionRecord,
         static: sqlalchemy.schema.Table,
         dynamic: sqlalchemy.schema.Table,
-        tsRepr: Type[TimespanDatabaseRepresentation],
+        TimespanReprClass: Type[TimespanDatabaseRepresentation],
         collectionKeyColumn: str,
         runKeyColumn: str
     ):
@@ -508,7 +507,7 @@ class _DatasetQueryLogicalTable(LogicalTable):
         self._collection = collection
         self._static = static
         self._dynamic = dynamic
-        self._tsRepr = tsRepr
+        self._TimespanReprClass = TimespanReprClass
         self._collectionKeyColumn = collectionKeyColumn
         self._runKeyColumn = runKeyColumn
 
@@ -528,12 +527,12 @@ class _DatasetQueryLogicalTable(LogicalTable):
             for c in ("id", "run", "rank", "ingest_date")
         )
 
-    @property  # type: ignore
-    @cached_getter
-    def topological_extents(self) -> AbstractSet[LogicalColumnTopologicalExtentKey]:
-        if self._collection.type is CollectionType.CALIBRATION:
-            return frozenset([LogicalColumnTopologicalExtentKey(table=self.name, column=self._tsRepr)])
-        return frozenset()
+    @property
+    def timespans(self) -> AbstractSet[str]:
+        return frozenset({self.name}) if self._collection.type is CollectionType.CALIBRATION else frozenset()
+
+    def getTimespanRepresentation(self) -> Type[TimespanDatabaseRepresentation]:
+        return self._TimespanReprClass
 
     def select(
         self,
