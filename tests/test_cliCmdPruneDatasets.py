@@ -83,7 +83,13 @@ class PruneDatasetsTestCase(unittest.TestCase):
 
     @staticmethod
     def makePruneDatasetsArgs(**kwargs):
-        expectedArgs = dict(refs=tuple(), disassociate=False, tags=None, purge=False, run=None, unstore=False)
+        # By default, if disassociate and purge are not provided then
+        # unstore=True.
+        unstore = (not kwargs.get("disassociate", None) and
+                   not kwargs.get("purge", None) and
+                   not kwargs.get("unstore", None))
+        expectedArgs = dict(refs=tuple(), disassociate=False, tags=None, purge=False, run=None,
+                            unstore=unstore)
         expectedArgs.update(kwargs)
         return expectedArgs
 
