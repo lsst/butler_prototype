@@ -169,6 +169,8 @@ pruneDatasets_errNoCollectionRestriction = unwrap(
     """Must indicate collections from which to prune datasets by passing COLLETION arguments (select all
     collections by passing '*', or consider using 'butler prune-collections'), by using --purge to pass a run
     collection, or by using --disassociate to select a tagged collection.""")
+pruneDatasets_errPruneOnNotRun = "Can not prune a collection that is not a RUN collection: {collection}"
+
 
 disassociate_option = MWOptionDecorator(
     "--disassociate", "disassociate_tags",
@@ -265,9 +267,9 @@ def prune_datasets(**kwargs):
 
     # If all of these variables are None then fall back to default of
     # unstore = True.
-    if not kwargs["disassociate_tags"] and
-       not kwargs["purge_run"] and
-       not kwargs["unstore"]:
+    if (not kwargs["disassociate_tags"] and
+        not kwargs["purge_run"] and
+        not kwargs["unstore"]):
         kwargs["unstore"] = True
 
     result = script.pruneDatasets(**kwargs)
@@ -277,6 +279,8 @@ def prune_datasets(**kwargs):
         return
     if result.errNoCollectionRestriction:
         raise click.ClickException(pruneDatasets_errNoCollectionRestriction)
+    if result.errPruneOnNotRun:
+        raise click.ClickException(pruneDatasets_errPruneOnNotRun.format(**result.errDict))
     if result.dryRun:
         print(pruneDatasets_wouldRemoveMsg)
         printAstropyTables(result.tables)

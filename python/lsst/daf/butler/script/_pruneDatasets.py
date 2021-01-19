@@ -24,6 +24,7 @@ from enum import Enum, auto
 
 from . import QueryDatasets
 from .. import Butler
+from .. import CollectionType
 
 
 class PruneDatasetsResult:
@@ -58,11 +59,15 @@ class PruneDatasetsResult:
         FINISHED = auto()
         ERR_PURGE_AND_DISASSOCIATE = auto()
         ERR_NO_COLLECTION_RESTRICTION = auto()
+        ERR_PRUNE_ON_NOT_RUN = auto()
 
-    def __init__(self, tables=None, state=None):
+    def __init__(self, tables=None, state=None, errDict=None):
         self.state = state or self.State.INIT
         self.tables = tables
         self.onConfirmation = None
+        # Container for variables related to the error that may be substituted
+        # into a user-visible string.
+        self.errDict = errDict or {}
 
     @property
     def dryRun(self):
@@ -83,6 +88,10 @@ class PruneDatasetsResult:
     @property
     def errNoCollectionRestriction(self):
         return self.state is self.State.ERR_NO_COLLECTION_RESTRICTION
+
+    @property
+    def errPruneOnNotRun(self):
+        return self.state is self.state.ERR_PRUNE_ON_NOT_RUN
 
 
 def pruneDatasets(repo, collections, datasets, where, disassociate_tags, unstore, purge_run, dry_run, confirm,
@@ -144,6 +153,16 @@ def pruneDatasets(repo, collections, datasets, where, disassociate_tags, unstore
 
     if not collections:
         return PruneDatasetsResult(state=PruneDatasetsResult.State.ERR_NO_COLLECTION_RESTRICTION)
+
+    butler = Butler(repo)
+
+    # If purging, verify that all the collections to purge are RUN type
+    # collections:
+    if purge_run:
+        collectionType = butler.registry.getCollectionType(purge_run)
+        if collectionType is not CollectionType.RUN:
+            return PruneDatasetsResult(state=PruneDatasetsResult.State.ERR_PRUNE_ON_NOT_RUN,
+                                       errDict=dict(collection=purge_run))
 
     datasets = QueryDatasets(
         repo=repo,

@@ -39,8 +39,10 @@ from lsst.daf.butler.cli.cmd.commands import (
     pruneDatasets_errPurgeAndDisassociate,
     pruneDatasets_errQuietWithDryRun,
     pruneDatasets_errNoCollectionRestriction,
+    pruneDatasets_errPruneOnNotRun,
 )
 from lsst.daf.butler.cli.utils import astropyTablesToStr, clickResultMsg, LogCliRunner
+from lsst.daf.butler.registry import CollectionType
 import lsst.daf.butler.script
 from lsst.daf.butler.script import QueryDatasets
 
@@ -320,7 +322,9 @@ class PruneDatasetsTestCase(unittest.TestCase):
             exPruneDatasetsExitCode=1
         )
 
-    def test_purgeImpliedArgs(self):
+    @patch.object(lsst.daf.butler.Registry, "getCollectionType",
+                  side_effect=lambda x: CollectionType.RUN)
+    def test_purgeImpliedArgs(self, mockGetCollectionType):
         """Verify the arguments implied by --purge.
 
         --purge <run> implies the following arguments to butler.pruneDatasets:
@@ -349,7 +353,9 @@ class PruneDatasetsTestCase(unittest.TestCase):
                     pruneDatasets_didRemoveAforementioned)
         )
 
-    def test_purgeImpliedArgsWithCollections(self):
+    @patch.object(lsst.daf.butler.Registry, "getCollectionType",
+                  side_effect=lambda x: CollectionType.RUN)
+    def test_purgeImpliedArgsWithCollections(self, mockGetCollectionType):
         """Verify the arguments implied by --purge, with a COLLECTIONS."""
         self.run_test(
             cliArgs=["myCollection", "--purge", "run"],
@@ -369,6 +375,23 @@ class PruneDatasetsTestCase(unittest.TestCase):
                     astropyTablesToStr(getTables()),
                     pruneDatasets_didRemoveAforementioned)
         )
+
+    @patch.object(lsst.daf.butler.Registry, "getCollectionType",
+                  side_effect=lambda x: CollectionType.TAGGED)
+    def test_purgeOnNonRunCollection(self, mockGetCollectionType):
+        """Verify calling run on a non-run collection fails with expected
+        error message. """
+        collectionName = "myTaggedCollection"
+        self.run_test(
+            cliArgs=["--purge", collectionName],
+            invokeInput="yes",
+            exPruneDatasetsCallArgs=None,
+            exQueryDatasetsCallArgs=None,
+            exGetTablesCalled=False,
+            exMsgs=(pruneDatasets_errPruneOnNotRun.format(collection=collectionName)),
+            exPruneDatasetsExitCode=1,
+        )
+
 
     def test_disassociateImpliedArgs(self):
         """Verify the arguments implied by --disassociate.
