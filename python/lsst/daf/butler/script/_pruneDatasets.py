@@ -131,7 +131,6 @@ def pruneDatasets(repo, collections, datasets, where, disassociate_tags, unstore
         A data structure that contains information about datasets for removal,
         removal status, and options to continue in some cases.
     """
-
     if disassociate_tags and purge_run:
         return PruneDatasetsResult(state=PruneDatasetsResult.State.ERR_PURGE_AND_DISASSOCIATE)
 

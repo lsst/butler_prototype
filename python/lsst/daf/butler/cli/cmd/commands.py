@@ -200,11 +200,10 @@ find_all_option = MWOptionDecorator(
 unstore_option = MWOptionDecorator(
     "--unstore",
     is_flag=True,
-    # TODO "known to this butler", on the next line, reads funny on the CLI.
-    # Can we say "related to this repo?" or similar?
-    help=unwrap("""Remove these datasets from all datastores known to this butler. Note that this will make
-                it impossible to retrieve these datasets even via other collections. Datasets that are already
-                not stored are ignored by this option.""")
+    help=unwrap("""Remove these datasets from all datastores configured with this data repository. If
+                --disassociate and --purge are not used then --unstore will be used by default. Note that
+                --unstore will make it impossible to retrieve these datasets even via other collections.
+                Datasets that are already not stored are ignored by this option.""")
 )
 
 
@@ -263,6 +262,14 @@ def prune_datasets(**kwargs):
         if kwargs["dry_run"]:
             raise click.ClickException(pruneDatasets_errQuietWithDryRun)
         kwargs["confirm"] = False
+
+    # If all of these variables are None then fall back to default of
+    # unstore = True.
+    if not kwargs["disassociate_tags"] and
+       not kwargs["purge_run"] and
+       not kwargs["unstore"]:
+        kwargs["unstore"] = True
+
     result = script.pruneDatasets(**kwargs)
 
     if result.errPurgeAndDisassociate:
