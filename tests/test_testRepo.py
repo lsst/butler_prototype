@@ -29,7 +29,7 @@ import unittest
 
 import lsst.daf.butler
 from lsst.daf.butler.tests import (makeTestRepo, makeTestCollection, addDatasetType, expandUniqueId,
-                                   MetricsExample, registerMetricsExample)
+                                   MetricsExample, registerMetricsExample, addDataIdValue)
 from lsst.daf.butler.tests.utils import makeTestTempDir, removeTestTempDir, safeTestTempDir
 
 
@@ -44,7 +44,9 @@ class ButlerUtilsTestSuite(unittest.TestCase):
         cls.root = makeTestTempDir(TESTDIR)
 
         dataIds = {
-            "instrument": ["notACam", "dummyCam"],
+            # Current system can generate invalid combinations
+            # "instrument": ["notACam", "dummyCam"],
+            "instrument": ["notACam"],
             "physical_filter": ["k2020", "l2019"],
             "visit": [101, 102],
             "detector": [5]
@@ -80,21 +82,33 @@ class ButlerUtilsTestSuite(unittest.TestCase):
         self.assertIn(dict(result[0]), expected)
 
     def testButlerDimensions(self):
-        self. _checkButlerDimension({"instrument"},
-                                    "instrument='notACam'",
-                                    [{"instrument": "notACam"}, {"instrument": "dummyCam"}])
-        self. _checkButlerDimension({"visit", "instrument"},
-                                    "visit=101",
-                                    [{"instrument": "notACam", "visit": 101},
-                                     {"instrument": "dummyCam", "visit": 101}])
-        self. _checkButlerDimension({"visit", "instrument"},
-                                    "visit=102",
-                                    [{"instrument": "notACam", "visit": 102},
-                                     {"instrument": "dummyCam", "visit": 102}])
-        self. _checkButlerDimension({"detector", "instrument"},
-                                    "detector=5",
-                                    [{"instrument": "notACam", "detector": 5},
-                                     {"instrument": "dummyCam", "detector": 5}])
+        self._checkButlerDimension({"instrument"},
+                                   "instrument='notACam'",
+                                   [{"instrument": "notACam"}, {"instrument": "dummyCam"}])
+        self._checkButlerDimension({"visit", "instrument"},
+                                   "visit=101",
+                                   [{"instrument": "notACam", "visit": 101},
+                                    {"instrument": "dummyCam", "visit": 101}])
+        self._checkButlerDimension({"visit", "instrument"},
+                                   "visit=102",
+                                   [{"instrument": "notACam", "visit": 102},
+                                    {"instrument": "dummyCam", "visit": 102}])
+        self._checkButlerDimension({"detector", "instrument"},
+                                   "detector=5",
+                                   [{"instrument": "notACam", "detector": 5},
+                                    {"instrument": "dummyCam", "detector": 5}])
+
+    def testAddDataIdValue(self):
+        addDataIdValue(self.butler, "visit", 999)
+        self._checkButlerDimension({"visit", "instrument"},
+                                   "visit=999",
+                                   [{"instrument": "notACam", "visit": 999},
+                                    {"instrument": "dummyCam", "visit": 999}])
+
+        with self.assertRaises(ValueError):
+            addDataIdValue(self.butler, "NotADimension", 42)
+        with self.assertRaises(ValueError):
+            addDataIdValue(self.butler, "detector", "nonNumeric")
 
     def testAddDatasetType(self):
         # 1 for StructuredDataNoComponents, 4 for StructuredData
