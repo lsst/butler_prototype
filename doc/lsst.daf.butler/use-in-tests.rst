@@ -51,6 +51,19 @@ If not, the `expandUniqueId` function can recover which values are assigned to w
    >>> butlerTests.expandUniqueId(repo, {"detector": 2})
    DataCoordinate({instrument, detector}, ('FancyCam', 2))
 
+The `addDataIdValue` function defines allowed data ID values after the repository has been created.
+Unlike the data ID parameter to `makeTestRepo`, `addDataIdValue` lets you optionally specify which values are related to which.
+Any required but unspecified relationships are filled arbitrarily, so you need only give the ones your tests depend on.
+
+.. code-block::py
+
+   addDataIdValue(butler, "skymap", "map")
+   addDataIdValue(butler, "tract", 42)
+   addDataIdValue(butler, "tract", 43, skymap="map")  # Redundant; only one map
+   for patch in [0, 1, 2, 3, 4, 5]:
+       addDataIdValue(butler, "patch", patch, tract=42)
+       addDataIdValue(butler, "patch", patch, tract=43)
+
 The `addDatasetType` function registers any dataset types needed by the test (e.g., "calexp").
 As with registering the data IDs, this is a prerequisite for actually reading or writing any datasets of that type during the test.
 
